@@ -1,0 +1,6 @@
+numpy
+pyshtools
+torch
+plotly
+opencv-python
+
