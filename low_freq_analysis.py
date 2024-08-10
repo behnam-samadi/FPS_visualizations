@@ -4,25 +4,53 @@ from sampling_methods import *
 from frequency_domain_oprations import *
 from utils import *
 import numpy as np
+import time
 
 
 pc = read_point_cloud("/home/behnam/phd/research/convex hull/modelnet40_frames/airplane_0001.txt")
 pc = pc[:,0:3]
 pc = pc[::10]
+pc = pc_normalize(pc)
 grid_pc = make_full_pc(pc)
 
+npoint = 64
+proposed_time = -time.time()
+fps_proposed = farthest_point_sample_proposed(np.expand_dims(pc, 0), npoint).astype(np.int32)
+proposed_time += time.time()
+orig_time = -time.time()
+fps_orig = farthest_point_sample(np.expand_dims(pc,0), npoint)
+orig_time += time.time()
+random_time = -time.time()
+rps = random_sampling(np.expand_dims(pc, axis=0), npoint).astype(np.int32)
+random_time += time.time()
 
 
-fps1 = farthest_point_sample_proposed(np.expand_dims(pc, 0), 30)
-fps2 = farthest_point_sample(np.expand_dims(pc,0), 30)
-compute_coverage(grid_pc, fps2)
+coverage_rps = compute_coverage(np.expand_dims(grid_pc, axis = 0), np.expand_dims(pc, axis = 0), rps)
+coverage_fps_orig = compute_coverage(np.expand_dims(grid_pc, axis = 0), np.expand_dims(pc, axis = 0), fps_orig)
+coverage_fps_proposed = compute_coverage(np.expand_dims(grid_pc, axis = 0), np.expand_dims(pc, axis = 0), fps_proposed)
 
+#test_plot2(pc, fps_orig[0,:])
+#test_plot2(pc, rps[0,:])
+#test_plot2(pc, fps_proposed[0,:])
+
+
+print("Times: ")
+print(orig_time)
+print(proposed_time)
+print(random_time)
+print(len(coverage_fps_orig))
+print(len(coverage_fps_proposed))
+print(len(coverage_rps))
+exit(0)
+#test_plot2(coverage[0,:,:])
+#whole = np.concatenate((pc, grid_pc))
+#test_plot2(whole)
 #print(compute_coverage(pc))
 #print(compute_coverage(fps1))
 #print(compute_coverage(fps2))
-test_plot2(pc, fps1[0,:])
-test_plot2(pc, fps2[0,:])
-test_plot2(pc)
+
+
+#test_plot2(pc)
 exit(0)
 
 

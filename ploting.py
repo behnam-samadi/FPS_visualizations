@@ -1,6 +1,7 @@
 import numpy as np
 import plotly.graph_objects as go
 
+
 def test_plot(cloud):
     # Assuming your point cloud is stored in the 'cloud' variable
     #cloud = np.random.rand(100, 3)  # Replace with your actual data
@@ -25,11 +26,11 @@ def test_plot(cloud):
     fig.show()
 
 
-def test_plot2(cloud, special_indices=None):
+def plot_style_2(cloud, special_indices=None):
     # Assuming your point cloud is stored in the 'cloud' variable
     # Define the indices of the points you want to color red
     if special_indices is None:
-        special_indices = np.random.choice(range(cloud.shape[0]), 30, replace=False)
+        special_indices = np.random.choice(range(cloud.shape[0]), 0, replace=False)
 
 
 

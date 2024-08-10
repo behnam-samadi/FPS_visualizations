@@ -156,8 +156,8 @@ def duplicate_randomly(pc, size):
 
 
 def freq_based_sampling(pc):
-    grid, flag, origin = convert_pc_to_grid(pc, 10, "cpu")
-    smooth_grid = low_pass_filter(grid, 10)
+    grid, flag, origin = convert_pc_to_grid(pc, 50, "cpu")
+    smooth_grid = low_pass_filter(grid, 15)
     smooth_pc = convert_grid_to_pc(smooth_grid, flag, origin)
     return smooth_pc
 

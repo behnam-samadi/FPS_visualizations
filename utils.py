@@ -134,8 +134,18 @@ def make_full_pc(pc, num_voxel_x = 50):
         for y_step in range(ny):
             for z_step in range(nz):
                 print(x_step, y_step, z_step)
-                output.append([x_min + x_step, y_min + y_step, z_min + z_step])
+                output.append([x_min + (x_step*x_voxel_size), y_min + (y_step*y_voxel_size), z_min + (z_step*z_voxel_size)])
     output = np.array(output)
     return output
+
+
+
+
+
+def expand_point_cloud(pc):
+    if pc.ndim == 2:
+        pc = np.expand_dims(pc, axis = 0)
+    return pc
+
 
 

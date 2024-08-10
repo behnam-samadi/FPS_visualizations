@@ -2,6 +2,8 @@ import numpy as np
 from queue import PriorityQueue
 import torch
 import random
+from utils import *
+
 
 def square_distance(src, dst):
     """
@@ -19,6 +21,8 @@ def square_distance(src, dst):
     Output:
         dist: per-point square distance, [B, N, M]
     """
+    src = torch.from_numpy(src)
+    dst = torch.from_numpy(dst)
     B, N, _ = src.shape
     _, M, _ = dst.shape
     dist = -2 * torch.matmul(src, dst.permute(0, 2, 1))
@@ -97,7 +101,7 @@ def farthest_point_sample_proposed(xyz, npoint):
     projected_values, order = project_and_sort(xyz)
     # print("Pre process time: ", pre_process_time)
     selected_points = list(np.expand_dims(np.random.randint(1, N - 1), axis=0))
-    # print("projected_values.shpe:", projected_values.shape)
+    # print("projected_values.shape:", projected_values.shape)
 
     head_candidate_score = abs(projected_values[0, selected_points[0]] - projected_values[0, 0])
     tail_candidate_score = abs(projected_values[0, selected_points[0]] - projected_values[0, N - 1])
@@ -149,6 +153,22 @@ def random_point_sample(xyz, npoint):
     return centroids
 
 
+def random_sampling(xyz, npoint):
+    # random
+    """
+    Input:
+        xyz: pointcloud data, [B, N, 3]
+        npoint: number of samples
+    Return:
+        centroids: sampled pointcloud index, [B, npoint]
+    """
+    range_list = list(range(xyz.shape[1]))
+    random_result = random.sample(range_list, npoint)
+    centroids = np.zeros((1, npoint))
+    centroids[0, 0:npoint] = random_result
+    return centroids
+
+
 def farthest_point_sample(xyz, npoint):
     # orig
     """
@@ -158,6 +178,8 @@ def farthest_point_sample(xyz, npoint):
     Return:
         centroids: sampled pointcloud index, [B, npoint]
     """
+    if xyz.ndim == 2:
+        xyz = np.expand_dims(xyz, axis = 0)
     xyz = torch.from_numpy(xyz)
     device = xyz.device
     B, N, C = xyz.shape
@@ -194,6 +216,8 @@ def query_ball_point(radius, nsample, xyz, new_xyz):
     Return:
         group_idx: grouped points index, [B, S, nsample]
     """
+    xyz = expand_point_cloud(xyz)
+    new_xyz = expand_point_cloud(new_xyz)
     device = xyz.device
     B, N, C = xyz.shape
     _, S, _ = new_xyz.shape
@@ -207,10 +231,13 @@ def query_ball_point(radius, nsample, xyz, new_xyz):
     return group_idx
 
 
-def compute_coverage(grid_pc, centroids, radius = 0.05, nsample = 32):
-
-    new_xyz = index_points(grid_pc, centroids)
+def compute_coverage(grid_pc, orig_pc, centroids, radius = 0.5, nsample = 32):
+    new_xyz = index_points(orig_pc, centroids)
     idx = query_ball_point(radius, nsample, grid_pc, new_xyz)
+    idx = idx[0,:,:]
+    idx = idx.flatten()
+    idx = idx.tolist()
+    idx = list(set(idx))
     return idx
 
 
@@ -263,3 +290,29 @@ def sample_and_group_all(xyz, points):
     else:
         new_points = grouped_xyz
     return new_xyz, new_points
+
+
+def find_distance_pc(pc1, pc2):
+    #pc1 = expand_point_cloud(pc1)
+    #pc2 = expand_point_cloud(pc2)
+    #sqrdists = square_distance(pc1, pc2)
+    #sqrdists = sqrdists.numpy()
+    #min_distances = np.min(sqrdists, axis=0)
+    #arg_min_distances = np.argmin(sqrdists, axis=0)
+    #return min_distances, arg_min_distances
+
+    #A = query_ball_point(10000, 1, pc1, pc2)
+
+
+    min_distances = []
+    arg_min_distances = []
+    for i, point1 in enumerate(pc1):
+        print(i)
+        distances = []
+        for point2 in pc2:
+            distances.append(euclid_dis(point1, point2))
+        distances = np.array(distances)
+        min_distances.append(np.min(distances))
+        arg_min_distances.append(np.argmin(distances))
+
+    return np.array(min_distances), np.array(arg_min_distances)
