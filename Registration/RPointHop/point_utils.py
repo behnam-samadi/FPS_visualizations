@@ -1,10 +1,12 @@
+from http.cookiejar import cut_port_re
+
 import numpy as np
 import torch
 import threading
 from sklearn.neighbors import NearestNeighbors as kNN
 from sklearn.decomposition import PCA
 
-from sampling_methods import distance_aware_farthest_point_sample, random_point_sample, farthest_point_sample, farthest_point_sample_proposed, distance_based_sampling
+from sampling_methods import distance_aware_farthest_point_sample, random_point_sample, farthest_point_sample, farthest_point_sample, distance_based_sampling
 
 
 def calc_distances(tmp, pts):
@@ -100,7 +102,63 @@ def furthest_point_sample_2_orig(pts, local_kernels, local_mean, K):
 
 
 
+
 def furthest_point_sample_2(pts, local_kernels, local_mean, K):
+    """
+    Input:
+        pts: pointcloud data, [B, N, C]
+        K: number of samples
+    Return:
+        (B, K, 3)
+    """
+    # pts = np.expand_dims(pts, axis=0)
+    B, N, C = pts.shape
+    centroids = np.zeros((B, K), dtype=int)
+
+    # np.random.seed(0)
+
+    # farthest = np.array([0,0])
+    batch_indices = np.arange(B)
+    cut_point = int(K/2)
+    pts_size = pts.shape[1]
+    pts2 = np.zeros(shape = (2, int(pts_size) - cut_point, 3))
+    distance = np.ones((B, pts2.shape[1]), dtype=int) * 1e10
+    #farthest = np.random.randint(0, pts2.shape[1], (B,))
+    farthest = np.zeros(B).astype(np.int32)
+    first_sampled_points = []
+    not_sampled_points = []
+    for i in range(B):
+        first_sampled_points_list = list(np.sort(distance_based_sampling(pts[i, :, :], K)[0:cut_point]))
+        first_sampled_points.append(first_sampled_points_list)
+        centroids[i, 0:cut_point] = first_sampled_points[-1]
+        #first_sampled_points[-1] = list(first_sampled_points[-1])
+        A = first_sampled_points[-1]
+        not_sampled_points.append([x for x in list(range(0,pts_size)) if x not in first_sampled_points[-1]])
+        pts2[i, :, :] = pts[i, not_sampled_points[-1]   , :]
+        #farthest[i] = centroids[i, cut_point-1]
+        farthest[i] = np.random.randint(0, pts2.shape[1])
+        #farthest = np.random.randint(0, pts2.shape[1], (B,))
+
+    for i in range(cut_point, K):
+        for j in range(B):
+            centroids[j, i] = not_sampled_points[j][farthest[j]]
+        centroid = pts2[batch_indices, farthest, :].reshape(B, 1, 3)
+        dist = np.sum((pts2 - centroid) ** 2, axis=-1)
+        mask = dist < distance
+        distance[mask] = dist[mask]
+        farthest = np.argmax(distance, axis=-1)
+    # kernels = local_kernels.reshape(local_kernels.shape[0],local_kernels.shape[1],-1)
+    centroids = np.sort(centroids)
+    kernels = index_points(local_kernels, centroids)
+    # kernels = kernels.reshape(kernels.shape[0],kernels.shape[1],3,3)
+
+    # print(centroids)
+
+    return index_points(pts, centroids), kernels, index_points(local_mean, centroids)
+
+
+
+def furthest_point_sample_2_proposed(pts, local_kernels, local_mean, K):
     """
     Input:
         pts: pointcloud data, [B, N, C]

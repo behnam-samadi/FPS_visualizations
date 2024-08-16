@@ -1,5 +1,6 @@
 import numpy as np
 from math import floor
+import sklearn
 
 
 def pc_bounds(pc):
@@ -148,4 +149,6 @@ def expand_point_cloud(pc):
     return pc
 
 
-
+def rmse(result, source):
+    distances = sklearn.metrics.pairwise.euclidean_distances(result, source)
+    return np.sqrt(np.mean(np.min(distances ** 2, axis=0) ** 2))

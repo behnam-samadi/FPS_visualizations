@@ -40,4 +40,6 @@ def make_target_frame(source_frame):
 
 
     # Verify the results
+    noise = np.random.normal(0, 0.01, size=(1024, 3))
+    source_frame += noise
     return source_frame
