@@ -4,7 +4,7 @@ import torch
 import random
 from utils import *
 import sklearn
-from frequency_domain_oprations import freq_based_sampling
+from frequency_domain_operations import freq_based_sampling
 
 
 def square_distance(src, dst):

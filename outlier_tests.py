@@ -6,8 +6,84 @@ from outlier import add_outlier_to_pc
 from sampling_methods import *
 import sklearn
 from Registration.RPointHop.test import register
-from frequency_domain_oprations import freq_based_sampling
+from Registration.RPointHop_orig.test import register_orig
+from frequency_domain_operations import freq_based_sampling
 import time
+import h5py
+from Registration.RPointHop.modelnet40 import data_load
+from make_registration_data import make_target_frame
+import os
+from dataset.make_registration_dataset import create_dataset
+
+frames_address = "dataset/samples/"
+arr = os.listdir(frames_address)
+for file in arr:
+    print(file)
+    address = frames_address + file
+    sample = np.load(address)
+    pc = sample[:, 0, :]
+    pc2 = sample[:, 1, :]
+    pc_ = sample[:, 2, :]
+    pc2_ = sample[:, 3, :]
+    result1 = register(pc, pc2)
+    result2 = register_orig(pc, pc2)
+    result3 = register(pc_, pc2_)
+    result4 = register_orig(pc_, pc2_)
+
+    distances = sklearn.metrics.pairwise.euclidean_distances(pc2, result1)
+    score = np.sum(np.min(distances**2, axis=0)**2)
+    print("score: ", score)
+
+    distances = sklearn.metrics.pairwise.euclidean_distances(pc2, result2)
+    score = np.sum(np.min(distances**2, axis=0)**2)
+    print("score: ", score)
+
+    distances = sklearn.metrics.pairwise.euclidean_distances(pc2_, result3)
+    score = np.sum(np.min(distances**2, axis=0)**2)
+    print("score: ", score)
+
+    distances = sklearn.metrics.pairwise.euclidean_distances(pc2_, result4)
+    score = np.sum(np.min(distances, axis=0)**2)
+    print("score: ", score)
+
+
+exit(0)
+
+
+#plot_style_2(pc)
+#plot_style_2(pc2)
+#plot_style_2(pc_)
+#plot_style_2(pc2_)
+whole = np.concatenate((pc, pc2))
+plot_style_2(whole)
+#plot_style_2(np.concatenate(pc_, pc2_))
+exit(0)
+
+
+
+
+
+pc = read_point_cloud("/home/behnam/phd/research/convex hull/modelnet40_frames/airplane_0001.txt")
+pc = pc[:,0:3]
+pc = pc[0:1024]
+
+
+
+pc2 = make_target_frame(pc)
+whole = np.concatenate((pc, pc2))
+plot_style_2(whole, list(range(1024,2048)))
+result = register(pc, pc2)
+
+distances = sklearn.metrics.pairwise.euclidean_distances(pc2,result)
+score = np.sum(np.min(distances, axis = 0))
+print("score: ", score)
+
+whole2 = np.concatenate((result, pc2))
+plot_style_2(whole2)
+
+
+#plot_style_2(pc2)
+exit(0)
 
 
 # Tests on visualizing distance aware sampling
@@ -37,6 +113,17 @@ import time
 # plot_style_2(pc1, sorted_1[0:640])
 # plot_style_2(pc2, sorted_2[0:640])
 
+initial_point = 1024
+train_data, train_label = data_load(num_point=initial_point,
+                                               data_dir='/home/behnam/phd/research/frequency_domain/temp_test', train=True)
+
+pc = train_data[17, :, :]
+#pc = pc_normalize(pc)
+#pc2 = train_label[0, :, :]
+plot_style_2(pc)
+#plot_style_2(pc2)
+
+f = h5py.File('/home/behnam/phd/research/frequency_domain/modelnet40_ply_hdf5_2048/ply_data_test0.h5', 'r')
 
 
 

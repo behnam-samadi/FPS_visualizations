@@ -1,7 +1,7 @@
 #from __future__ import division
 from ploting import *
 from sampling_methods import *
-from frequency_domain_oprations import *
+from frequency_domain_operations import *
 from utils import *
 import numpy as np
 import time
