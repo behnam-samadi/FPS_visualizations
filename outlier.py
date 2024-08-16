@@ -2,6 +2,7 @@ import random
 from utils import pc_bounds
 import numpy as np
 
+
 def generate_random_float(min_value, max_value):
     return min_value + (max_value - min_value) * random.random()
 

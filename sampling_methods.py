@@ -3,6 +3,8 @@ from queue import PriorityQueue
 import torch
 import random
 from utils import *
+import sklearn
+from frequency_domain_oprations import freq_based_sampling
 
 
 def square_distance(src, dst):
@@ -96,6 +98,7 @@ def farthest_point_sample_proposed(xyz, npoint):
         centroids: sampled pointcloud index, [B, npoint]
     """
     # implementing the proposed FPS is desinged for batch_size=1 (for inference)
+    xyz = expand_point_cloud(xyz)
     device = xyz.device
     B, N, C = xyz.shape
     projected_values, order = project_and_sort(xyz)
@@ -200,6 +203,61 @@ def farthest_point_sample(xyz, npoint):
         mask = dist < distance
         distance[mask] = dist[mask]
         farthest = np.argmax(distance, -1)
+        #farthest = farthest[1]
+        #farthest = np.max(distance, -1)[1]
+
+    return centroids
+
+def distance_based_sampling(xyz, npoint):
+    pc1 = pc_normalize(xyz)
+    low_freq_rec1 = freq_based_sampling(pc1)
+    # min_distances, arg_min_distances = find_distance_pc(pc2, low_freq_rec)
+    distances_1 = sklearn.metrics.pairwise.euclidean_distances(pc1, low_freq_rec1)
+    min_1 = np.min(distances_1, axis=1)
+    sorted_1 = np.argsort(min_1)
+    return sorted_1[0:npoint]
+
+def distance_aware_farthest_point_sample(xyz, npoint):
+    # orig
+    """
+    Input:
+        xyz: pointcloud data, [B, N, 3]
+        npoint: number of samples
+    Return:
+        centroids: sampled pointcloud index, [B, npoint]
+    """
+
+
+
+    low_freq_rec = freq_based_sampling(xyz)
+    low_freq_rec = pc_normalize(low_freq_rec)
+    # min_distances, arg_min_distances = find_distance_pc(pc2, low_freq_rec)
+    min_distances_2 = sklearn.metrics.pairwise.euclidean_distances(xyz, low_freq_rec)
+    distances = np.min(min_distances_2, axis=1)
+    if xyz.ndim == 2:
+        xyz = np.expand_dims(xyz, axis = 0)
+
+    xyz = torch.from_numpy(xyz)
+    device = xyz.device
+    B, N, C = xyz.shape
+    centroids = torch.zeros(B, npoint, dtype=torch.long).to(device)
+    distance = torch.ones(B, N).to(device) * 1e10
+    farthest = torch.randint(0, N, (B,), dtype=torch.long).to(device)
+    centroids = centroids.numpy()
+    distance = distance.numpy()
+    farthest = farthest.numpy()
+    batch_indices = torch.arange(B, dtype=torch.long).to(device)
+    batch_indices = batch_indices.numpy()
+    for i in range(npoint):
+        centroids[:, i] = farthest
+        centroid = xyz[batch_indices, farthest, :].view(B, 1, 3)
+        dist = torch.sum((xyz - centroid) ** 2, -1)
+        dist = dist.numpy()
+        #dist = torch.abs(torch.sum(xyz, -1) - torch.sum(centroid, -1))
+        mask = dist < distance
+        distance[mask] = dist[mask]
+        farthest = np.argmax(distance - distances, -1)
+        distances[farthest] = 1e10
         #farthest = farthest[1]
         #farthest = np.max(distance, -1)[1]
 

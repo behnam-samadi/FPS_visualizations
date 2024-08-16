@@ -117,10 +117,10 @@ def convert_grid_to_pc(grid, flag, origin):
     pc[:, :, 2] = -z  # must have the minus
     pc = pc.reshape((-1, 3))
     pc = pc[flag, :]  # only the flagged polar angles must be used in the point cloud reconstruction
-    print("----------")
-    print(pc.shape)
-    print(origin.shape)
-    print("----------")
+    #print("----------")
+    #print(pc.shape)
+    #print(origin.shape)
+    #print("----------")
     pc += origin  # translate to the original origin
 
     return pc
@@ -156,8 +156,8 @@ def duplicate_randomly(pc, size):
 
 
 def freq_based_sampling(pc):
-    grid, flag, origin = convert_pc_to_grid(pc, 50, "cpu")
-    smooth_grid = low_pass_filter(grid, 15)
+    grid, flag, origin = convert_pc_to_grid(pc, 100, "cpu")
+    smooth_grid = low_pass_filter(grid, 50)
     smooth_pc = convert_grid_to_pc(smooth_grid, flag, origin)
     return smooth_pc
 

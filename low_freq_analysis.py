@@ -8,6 +8,7 @@ import time
 
 
 pc = read_point_cloud("/home/behnam/phd/research/convex hull/modelnet40_frames/airplane_0001.txt")
+
 pc = pc[:,0:3]
 pc = pc[::10]
 pc = pc_normalize(pc)
