@@ -256,7 +256,7 @@ def distance_aware_farthest_point_sample(xyz, npoint):
         #dist = torch.abs(torch.sum(xyz, -1) - torch.sum(centroid, -1))
         mask = dist < distance
         distance[mask] = dist[mask]
-        farthest = np.argmax(distance - distances, -1)
+        farthest = np.argmax(distance - distances*100000, -1)
         distances[farthest] = 1e10
         #farthest = farthest[1]
         #farthest = np.max(distance, -1)[1]

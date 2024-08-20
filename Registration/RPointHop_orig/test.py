@@ -8,6 +8,8 @@ import sklearn
 from Registration.RPointHop_orig import data_transforms
 from Registration.RPointHop import modelnet40
 from Registration.RPointHop_orig import rpointhop
+from ploting import plot_style_2
+from frequency_domain_operations import freq_based_sampling
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -42,34 +44,11 @@ def read_pc(file):
     return pt
 
 
-def register_orig(source_pc, target_pc):
-    initial_point = source_pc.shape[0]
-    target_e = np.expand_dims(target_pc, axis=0)
-    source_e = np.expand_dims(source_pc, axis=0)
-    data_c = np.concatenate((target_e, source_e), axis=0)
 
-    with open(os.path.join("Registration/RPointHop/"+MODEL_DIR, 'R-PointHop.pkl'), 'rb') as f:
-        params = pickle.load(f)
-    f.close()
-
-    leaf_nodes, points = rpointhop.pointhop_pred(False, data_c, pca_params=params, n_newpoint=num_point,
-                                                 n_sample=num_sample)
-    features = np.array(leaf_nodes)
-    features = np.reshape(features, (features.shape[0], features.shape[1], features.shape[2]))
-    features = np.moveaxis(features, 0, 2)
-
-    target_fea = features[0]
-    source_fea = features[1]
-
-    target_pts = points[0]
-    source_pts = points[1]
-
+def find_transform(target_fea, source_fea, target_pc, source_pc, target_pts, source_pts):
     distances = sklearn.metrics.pairwise.euclidean_distances(target_fea, source_fea)
-    min_score = np.min(distances, axis =0)
+    min_score = np.min(distances, axis=0)
     score = np.sum(min_score)
-    #print("score: ", score)
-    #print(source_pts.shape)
-    #print(target_pts.shape)
 
     pred = np.argmin(distances, axis=0)
     dist_sort = np.sort(distances, axis=0)
@@ -112,8 +91,50 @@ def register_orig(source_pc, target_pc):
     t = -R @ y_mean.T + x_mean.T
 
     source_aligned = data_transforms.apply_inverse_transformation(source_pc, angle[2], angle[1], angle[0], t)
-
     return source_aligned
+
+
+def register_orig(source_pc, target_pc):
+    initial_point = source_pc.shape[0]
+    target_e = np.expand_dims(target_pc, axis=0)
+    source_e = np.expand_dims(source_pc, axis=0)
+    data_c = np.concatenate((target_e, source_e), axis=0)
+
+    with open(os.path.join("Registration/RPointHop_orig/"+MODEL_DIR, 'R-PointHop.pkl'), 'rb') as f:
+        params = pickle.load(f)
+    f.close()
+
+    leaf_nodes, points = rpointhop.pointhop_pred(False, data_c, pca_params=params, n_newpoint=num_point,
+                                                 n_sample=num_sample)
+    features = np.array(leaf_nodes)
+    features = np.reshape(features, (features.shape[0], features.shape[1], features.shape[2]))
+    features = np.moveaxis(features, 0, 2)
+
+    target_fea = features[0]
+    source_fea = features[1]
+
+    target_pts = points[0]
+    source_pts = points[1]
+
+
+    source_pc_rec = freq_based_sampling(source_pc)
+    target_pc_rec = freq_based_sampling(target_pc)
+
+    distances_source = sklearn.metrics.pairwise.euclidean_distances(source_pts, source_pc_rec)
+    distances_target = sklearn.metrics.pairwise.euclidean_distances(target_pts, target_pc_rec)
+
+    sorted_distances_source = np.sort(distances_source, axis = 1)[:,0:700]
+    sorted_distances_target = np.sort(distances_target, axis = 1)[:, 0:700]
+    result1= find_transform(target_fea, source_fea, target_pc, source_pc, target_pts, source_pts)
+    result2 = find_transform(np.concatenate((target_fea, sorted_distances_target), axis = 1), np.concatenate((source_fea, sorted_distances_source), axis = 1), target_pc, source_pc, target_pts, source_pts)
+
+    # result1 = find_transform(target_fea, source_fea, target_pc, source_pc, target_pts, source_pts)
+    # result2 = find_transform(sorted_distances_target,
+    #                          sorted_distances_source, target_pc, source_pc,
+    #                          target_pts, source_pts)
+
+
+    return result1, result2
 
 
 

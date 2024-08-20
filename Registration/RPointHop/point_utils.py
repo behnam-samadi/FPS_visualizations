@@ -3,10 +3,15 @@ from http.cookiejar import cut_port_re
 import numpy as np
 import torch
 import threading
+
+from astropy.io.fits import append
 from sklearn.neighbors import NearestNeighbors as kNN
 from sklearn.decomposition import PCA
-
+import sklearn
+from frequency_domain_operations import freq_based_sampling
+from ploting import plot_style_2
 from sampling_methods import distance_aware_farthest_point_sample, random_point_sample, farthest_point_sample, farthest_point_sample, distance_based_sampling
+#from various_tests import low_freq_rec
 
 
 def calc_distances(tmp, pts):
@@ -102,6 +107,61 @@ def furthest_point_sample_2_orig(pts, local_kernels, local_mean, K):
 
 
 
+def furthest_point_sample_2_combine_correct(pts, local_kernels, local_mean, K):
+    """
+    Input:
+        pts: pointcloud data, [B, N, C]
+        K: number of samples
+    Return:
+        (B, K, 3)
+    """
+    # pts = np.expand_dims(pts, axis=0)
+    B, N, C = pts.shape
+    centroids = np.zeros((B, K), dtype=int)
+    distance = np.ones((B, N), dtype=int) * 1e10
+    # np.random.seed(0)
+    farthest = np.random.randint(0, N, (B,))
+    sorteds = []
+    for i in range(B):
+        pc1 = pts[i, :, :]
+        low_freq_rec1 = freq_based_sampling(pc1)
+        distances_1 = sklearn.metrics.pairwise.euclidean_distances(pc1, low_freq_rec1)
+        min_1 = np.min(distances_1, axis=1)
+        sorted_1 = np.argsort(min_1)
+        sorteds.append(sorted_1)
+    all_points = []
+    all_points.append(list(range(0, pts.shape[1])))
+    all_points.append(list(range(0, pts.shape[1])))
+    cut_off_point = int(K/2)
+    batch_indices = np.arange(B)
+    for i in range(K):
+        if i < cut_off_point:
+            for j in range(B):
+                centroids[j, i] = sorteds[j][i]
+                all_points[j].remove(int(sorteds[j][i]))
+        elif i == cut_off_point:
+            for j in range(B):
+                random_number = np.random.randint(0, len(all_points[j]))
+                farthest[j] = all_points[j][random_number]
+        elif i > cut_off_point:
+            centroids[:, i] = farthest
+        centroid = pts[batch_indices, farthest, :].reshape(B, 1, 3)
+        dist = np.sum((pts - centroid) ** 2, axis=-1)
+        mask = dist < distance
+        distance[mask] = dist[mask]
+        farthest = np.argmax(distance, axis=-1)
+
+    # kernels = local_kernels.reshape(local_kernels.shape[0],local_kernels.shape[1],-1)
+    centroids = np.sort(centroids)
+    kernels = index_points(local_kernels, centroids)
+    # kernels = kernels.reshape(kernels.shape[0],kernels.shape[1],3,3)
+
+    # print(centroids)
+
+    return index_points(pts, centroids), kernels, index_points(local_mean, centroids)
+
+
+
 
 def furthest_point_sample_2(pts, local_kernels, local_mean, K):
     """
@@ -119,7 +179,7 @@ def furthest_point_sample_2(pts, local_kernels, local_mean, K):
 
     # farthest = np.array([0,0])
     batch_indices = np.arange(B)
-    cut_point = int(K/2)
+    cut_point = int(K/3)
     pts_size = pts.shape[1]
     pts2 = np.zeros(shape = (2, int(pts_size) - cut_point, 3))
     distance = np.ones((B, pts2.shape[1]), dtype=int) * 1e10
@@ -157,6 +217,55 @@ def furthest_point_sample_2(pts, local_kernels, local_mean, K):
     return index_points(pts, centroids), kernels, index_points(local_mean, centroids)
 
 
+def furthest_point_sample_2_uniform(pts, local_kernels, local_mean, K):
+    """
+    Input:
+        pts: pointcloud data, [B, N, C]
+        K: number of samples
+    Return:
+        (B, K, 3)
+    """
+    # pts = np.expand_dims(pts, axis=0)
+    B, N, C = pts.shape
+    centroids = np.zeros((B, K), dtype=int)
+
+    # np.random.seed(0)
+
+    # farthest = np.array([0,0])
+    batch_indices = np.arange(B)
+    cut_point = int(K/3)
+    pts_size = pts.shape[1]
+    pts2 = np.zeros(shape = (2, int(pts_size) - cut_point, 3))
+    distance = np.ones((B, pts2.shape[1]), dtype=int) * 1e10
+    #farthest = np.random.randint(0, pts2.shape[1], (B,))
+    farthest = np.zeros(B).astype(np.int32)
+    first_sampled_points = []
+    not_sampled_points = []
+    for i in range(B):
+        pc1 = pts[i, :, :]
+        low_freq_rec1 = freq_based_sampling(pc1)
+        distances_1 = sklearn.metrics.pairwise.euclidean_distances(pc1, low_freq_rec1)
+        min_1 = np.min(distances_1, axis=1)
+        sorted_1 = np.argsort(min_1)
+        p = 0
+        c = 0
+        step = (float(pts.shape[1]) / float(K))
+        while c < K:
+            centroids[i, c] = sorted_1[p]
+            p = int(p + step)
+            c = c + 1
+        #centroids[i , :] = sorted_1[::int(pts.shape[1]/K)]
+    centroids = np.sort(centroids)
+    kernels = index_points(local_kernels, centroids)
+    # kernels = kernels.reshape(kernels.shape[0],kernels.shape[1],3,3)
+
+    # print(centroids)
+
+    return index_points(pts, centroids), kernels, index_points(local_mean, centroids)
+
+
+
+
 
 def furthest_point_sample_2_proposed(pts, local_kernels, local_mean, K):
     """
@@ -170,8 +279,8 @@ def furthest_point_sample_2_proposed(pts, local_kernels, local_mean, K):
     B, N, C = pts.shape
     centroids = np.zeros((B, K), dtype=int)
     for i in range(B):
-        centroids[i, :] = distance_based_sampling(pts[i, :,:], K)
-        #centroids[i, :] = distance_aware_farthest_point_sample(pts[i, :, :], K)
+        #centroids[i, :] = distance_based_sampling(pts[i, :,:], K)
+        centroids[i, :] = distance_aware_farthest_point_sample(pts[i, :, :], K)
         #centroids[i, :] = farthest_point_sample(pts[i, :,:], K)
         #centroids[i, :] = random_point_sample(pts[i, :, :], K)
         #centroids[i, :] = farthest_point_sample_proposed(pts[i, :, :], K)

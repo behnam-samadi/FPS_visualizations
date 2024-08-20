@@ -14,9 +14,7 @@ from Registration.RPointHop.modelnet40 import data_load
 from make_registration_data import make_target_frame
 import os
 from dataset.make_registration_dataset import create_dataset
-
-
-
+#from various_tests import result
 
 
 def compare_methods():
@@ -30,35 +28,51 @@ def compare_methods():
         pc2 = sample[:, 1, :]
         pc_ = sample[:, 2, :]
         pc2_ = sample[:, 3, :]
-        result1 = register(pc, pc2)
-        result2 = register_orig(pc, pc2)
-        result3 = register(pc_, pc2_)
-        result4 = register_orig(pc_, pc2_)
 
-        distances = sklearn.metrics.pairwise.euclidean_distances(pc2, result1)
-        score = np.sum(np.min(distances ** 2, axis=0) ** 2)
-        print(rmse(result1, pc2))
-        #print("score: ", score)
-
-        distances = sklearn.metrics.pairwise.euclidean_distances(pc2, result2)
-        score = np.sum(np.min(distances ** 2, axis=0) ** 2)
+        result2, result2_ = register_orig(pc, pc2)
         print(rmse(result2, pc2))
-        #print("score: ", score)
+        print(rmse(result2_, pc2))
 
-        distances = sklearn.metrics.pairwise.euclidean_distances(pc2_, result3)
-        score = np.sum(np.min(distances ** 2, axis=0) ** 2)
-        print(rmse(result3, pc2_))
-        #print("score: ", score)
+        # whole2 = np.concatenate((result2, pc2))
+        # plot_style_2(whole2)
+        # result1 = register(pc, pc2)
+        # whole1 = np.concatenate((result1, pc2))
+        # plot_style_2(whole1)
+        #
+        #
+        #
+        #
+        #
+        # exit(0)
+        # result4 = register_orig(pc_, pc2_)
+        # result3 = register(pc_, pc2_)
+        #
+        #
+        # distances = sklearn.metrics.pairwise.euclidean_distances(pc2, result1)
+        # score = np.sum(np.min(distances ** 2, axis=0) ** 2)
+        # print(rmse(result1, pc2))
+        # #print("score: ", score)
+        #
+        # distances = sklearn.metrics.pairwise.euclidean_distances(pc2, result2)
+        # score = np.sum(np.min(distances ** 2, axis=0) ** 2)
+        # print(rmse(result2, pc2))
+        # #print("score: ", score)
+        #
+        # distances = sklearn.metrics.pairwise.euclidean_distances(pc2_, result3)
+        # score = np.sum(np.min(distances ** 2, axis=0) ** 2)
+        # print(rmse(result3, pc2_))
+        # #print("score: ", score)
+        #
+        # distances = sklearn.metrics.pairwise.euclidean_distances(pc2_, result4)
+        # score = np.sum(np.min(distances, axis=0) ** 2)
+        # print(rmse(result4, pc2_))
+        # #print("score: ", score)
 
-        distances = sklearn.metrics.pairwise.euclidean_distances(pc2_, result4)
-        score = np.sum(np.min(distances, axis=0) ** 2)
-        print(rmse(result4, pc2_))
-        #print("score: ", score)
 
 
 def visualize_distance_based_sampling():
     #Tests on visualizing distance aware sampling
-    sample = np.load("/home/behnam/phd/research/frequency_domain/pythonProject/dataset/samples/airplane_0009.npy")
+    sample = np.load("/home/behnam/phd/research/frequency_domain/pythonProject/dataset/samples/monitor_0011.npy")
     pc1 = sample[:,0,:]
     pc2 = sample[:,1,:]
     #pc1 = np.load("/home/behnam/temp/R-PointHop/source_0.ply.npy")
@@ -84,9 +98,68 @@ def visualize_distance_based_sampling():
     sorted_1 = np.argsort(min_1)
     sorted_2 = np.argsort(min_2)
 
-    plot_style_2(pc1, sorted_1[0:32])
-    plot_style_2(pc2, sorted_2[0:32])
+    fps1 = farthest_point_sample(pc1, 128)
+    fps2 = farthest_point_sample(pc2, 128)
+    plot_style_2(pc1, sorted_1[::8])
+    plot_style_2(pc2, sorted_2[::8])
+
+
+def compare_and_visualize_registration():
+    sample = np.load("dataset/samples/monitor_0004.npy")
+    pc1 = sample[:,0,:]
+    pc2 = sample[:, 1, :]
+    pc1_ = sample[:, 2, :]
+    pc2_ = sample[:, 3, :]
+
+
+    result1 = register(pc1, pc2)
+    print(rmse(result1, pc2))
+    exit(0)
+
+    result2 = register_orig(pc1, pc2)
+    result3 = register(pc1_, pc2_)
+    result4 = register_orig(pc1_, pc2_)
+
+    whole1 = np.concatenate((pc2, result1))
+    whole2 = np.concatenate((pc2, result2))
+    whole3 = np.concatenate((pc2_, result3))
+    whole4 = np.concatenate((pc2_, result4))
+
+    plot_style_2(whole1)
+    plot_style_2(whole2)
+    plot_style_2(whole3)
+    plot_style_2(whole4)
+
+    plot_style_2(whole1, list(range(1024, 2048)))
+    plot_style_2(whole2, list(range(1024, 2048)))
+    plot_style_2(whole3, list(range(1024, 2048)))
+    plot_style_2(whole4, list(range(1024, 2048)))
+
+    distances = sklearn.metrics.pairwise.euclidean_distances(pc2, result1)
+    score = np.sum(np.min(distances ** 2, axis=0) ** 2)
+    print(rmse(result1, pc2))
+    # print("score: ", score)
+
+    distances = sklearn.metrics.pairwise.euclidean_distances(pc2, result2)
+    score = np.sum(np.min(distances ** 2, axis=0) ** 2)
+    print(rmse(result2, pc2))
+    # print("score: ", score)
+
+    distances = sklearn.metrics.pairwise.euclidean_distances(pc2_, result3)
+    score = np.sum(np.min(distances ** 2, axis=0) ** 2)
+    print(rmse(result3, pc2_))
+    # print("score: ", score)
+
+    distances = sklearn.metrics.pairwise.euclidean_distances(pc2_, result4)
+    score = np.sum(np.min(distances, axis=0) ** 2)
+    print(rmse(result4, pc2_))
+    # print("score: ", score)
+    a = 9
+
+
 
 #visualize_distance_based_sampling()
 compare_methods()
+#create_dataset()
+#compare_and_visualize_registration()
 exit(0)
