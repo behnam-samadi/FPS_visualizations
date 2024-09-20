@@ -72,7 +72,7 @@ def furthest_point_sample(pts, K):
 
     return index_points(pts, centroids)
 
-def furthest_point_sample_2_orig(pts, local_kernels, local_mean, K):
+def furthest_point_sample_2(pts, local_kernels, local_mean, K):
     """
     Input:
         pts: pointcloud data, [B, N, C]
@@ -107,7 +107,7 @@ def furthest_point_sample_2_orig(pts, local_kernels, local_mean, K):
 
 
 
-def furthest_point_sample_2_combine_correct(pts, local_kernels, local_mean, K):
+def furthest_point_sample_2_combine_best(pts, local_kernels, local_mean, K):
     """
     Input:
         pts: pointcloud data, [B, N, C]
@@ -163,7 +163,7 @@ def furthest_point_sample_2_combine_correct(pts, local_kernels, local_mean, K):
 
 
 
-def furthest_point_sample_2(pts, local_kernels, local_mean, K):
+def furthest_point_sample_2_combine_correct(pts, local_kernels, local_mean, K):
     """
     Input:
         pts: pointcloud data, [B, N, C]

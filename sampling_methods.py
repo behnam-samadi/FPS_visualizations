@@ -88,6 +88,50 @@ def find_middle_candidate(projected, left, right):
             return res, abs(projected[0,res] - projected[0,right])
 
 
+def farthest_point_sample_proposed_all_projected_distance(xyz, npoint):
+    # proposed
+    """
+    Input:
+        xyz: pointcloud data, [B, N, 3]
+        npoint: number of samples
+    Return:
+        centroids: sampled pointcloud index, [B, npoint]
+    """
+    # implementing the proposed FPS is desinged for batch_size=1 (for inference)
+    xyz = expand_point_cloud(xyz)
+    device = xyz.device
+    B, N, C = xyz.shape
+    projected_values, order = project_and_sort(xyz)
+    # print("Pre process time: ", pre_process_time)
+    selected_points = list(np.expand_dims(np.random.randint(1, N - 1), axis=0))
+    # print("projected_values.shape:", projected_values.shape)
+
+    head_candidate_score = abs(projected_values[0, selected_points[0]] - projected_values[0, 0])
+    tail_candidate_score = abs(projected_values[0, selected_points[0]] - projected_values[0, N - 1])
+    candidates = PriorityQueue()
+    candidates.put((-1 * head_candidate_score, 0, -2, selected_points[0]))
+    candidates.put((-1 * tail_candidate_score, N - 1, selected_points[0], -1))
+    for i in range(npoint - 1):
+        _, next_selected, left_selected, right_selected = candidates.get()
+        # selected_points = torch.cat((selected_points, torch.tensor([next_selected])), 0)
+        selected_points.append(next_selected)
+        # Adding the right-side candidate:
+        if not (right_selected == -1 or right_selected == next_selected + 1):
+            middle, score = find_middle_candidate(projected_values, next_selected, right_selected)
+            candidates.put((-1 * score, middle, next_selected, right_selected))
+
+        # Adding the left-side candidate:
+        if not (left_selected == -2 or left_selected == next_selected - 1):
+            middle, score = find_middle_candidate(projected_values, left_selected, next_selected)
+            candidates.put((-1 * score, middle, left_selected, next_selected))
+
+    centroids = np.zeros((1, npoint))
+    centroids[0, 0:npoint] = order[0, selected_points]
+    # TODO (important): re-arrange the selected points by the order tensor
+    return centroids
+
+
+
 def farthest_point_sample_proposed(xyz, npoint):
     # proposed
     """

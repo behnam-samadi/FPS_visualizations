@@ -9,11 +9,16 @@ from Registration.RPointHop.test import register
 from Registration.RPointHop_orig.test import register_orig
 from frequency_domain_operations import freq_based_sampling
 import time
+from seminar_plots import *
 import h5py
 from Registration.RPointHop.modelnet40 import data_load
 from make_registration_data import make_target_frame
 import os
 from dataset.make_registration_dataset import create_dataset
+from pure_proposed_registration import dis_to_rec_based_register
+
+
+
 #from various_tests import result
 
 
@@ -24,14 +29,29 @@ def compare_methods():
         print(file)
         address = frames_address + file
         sample = np.load(address)
-        pc = sample[:, 0, :]
+        pc1 = sample[:, 0, :]
         pc2 = sample[:, 1, :]
-        pc_ = sample[:, 2, :]
-        pc2_ = sample[:, 3, :]
+        proposed_time = - time.time()
+        result_proposed = dis_to_rec_based_register(pc1, pc2)
+        proposed_time += time.time()
 
-        result2, result2_ = register_orig(pc, pc2)
-        print(rmse(result2, pc2))
-        print(rmse(result2_, pc2))
+        baseline_time = -time.time()
+        result_rpointhop = register(pc1, pc2)
+        baseline_time += time.time()
+
+        input = np.concatenate((pc1, pc2))
+        output1 = np.concatenate((result_rpointhop, pc2))
+        output2 = np.concatenate((result_proposed, pc2))
+        plot_style_2(input)
+        plot_style_2(output1)
+        plot_style_2(output2)
+
+
+        print(baseline_time, proposed_time)
+
+        print(rmse(result_proposed, pc2))
+        print(rmse(result_rpointhop, pc2))
+
 
         # whole2 = np.concatenate((result2, pc2))
         # plot_style_2(whole2)
@@ -108,6 +128,11 @@ def compare_and_visualize_registration():
     sample = np.load("dataset/samples/monitor_0004.npy")
     pc1 = sample[:,0,:]
     pc2 = sample[:, 1, :]
+
+
+
+
+
     pc1_ = sample[:, 2, :]
     pc2_ = sample[:, 3, :]
 
@@ -158,8 +183,11 @@ def compare_and_visualize_registration():
 
 
 
+
+plot3()
+#plot1_1()
 #visualize_distance_based_sampling()
-compare_methods()
+#compare_methods()
 #create_dataset()
 #compare_and_visualize_registration()
 exit(0)
